@@ -2,9 +2,9 @@ const TelegramBot = require("node-telegram-bot-api");
 const https = require("https");
 const fs = require("fs");
 const { openaiApiRequest } = require("./test.js");
-const bot = new TelegramBot("5643705204:AAG7FmPMBAyUiN7ppy9oe9nIgYpLKl97FsE", { polling: true });
+const bot = new TelegramBot("Your bot key", { polling: true });
 const options = {
-  key: fs.readFileSync("/root/private.key"),
+  key: fs.readFileSync("/root/private.key"), //Setting ssl
   cert: fs.readFileSync("/root/cert_chain.crt"),
 };
 
