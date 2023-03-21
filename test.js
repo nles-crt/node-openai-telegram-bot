@@ -21,7 +21,7 @@ async function openaiApiRequest(input) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + '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' // replace with your API key
+      'Authorization': 'Bearer ' +  // replace with your API key
     }
   };
 
