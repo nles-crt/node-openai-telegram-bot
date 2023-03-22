@@ -2,25 +2,16 @@ const TelegramBot = require("node-telegram-bot-api");
 const https = require("https");
 const fs = require("fs");
 const { openaiApiRequest } = require("./test.js");
-const bot = new TelegramBot("Your bot key", { polling: true });
+const { getqq } = require("./test.js");
+const bot = new TelegramBot("机器人密钥", { polling: true });
 const options = {
-  key: fs.readFileSync("/root/private.key"), //Setting ssl
+  key: fs.readFileSync("/root/private.key"),
   cert: fs.readFileSync("/root/cert_chain.crt"),
 };
-
-// 当收到'/start'命令时，发送一条欢迎消息
-bot.onText(/\/start/, (msg) => {
-  const chatId = msg.chat.id;
-  bot.sendMessage(chatId, "欢迎使用我的机器人！");
-});
-
+const userChatHistory = {};
 function opentxt(data) {
   const stream = fs.createWriteStream("log.txt", { flags: "a" });
-
-  // 持续写入数据
   stream.write(`${data}\n`);
-
-  // 结束写入并关闭流
   stream.end();
 }
 
@@ -34,30 +25,73 @@ function echolog(userId, chatId, text) {
   return;
 }
 
-// 当收到文字消息时，原样返回
+function updateUserChatHistory(userId, message, isUser = true) {
+
+  if (!userChatHistory[userId]) {
+    userChatHistory[userId] = [];
+  }
+  if (message == '结束对话'){
+    userChatHistory[userId] = [];
+    return true;
+  }
+
+  if(userChatHistory[userId].length > 8){   //限制储存用户内容长度大于8清空
+    userChatHistory[userId] = [];
+  }
+  console.log(userChatHistory[userId].length)
+  const prefix = isUser ? " " : "\n\n";
+  userChatHistory[userId].push(prefix + message);
+}
+
 bot.on("message", async (msg) => {
   const userId = msg.from.id;
   const chatId = msg.chat.id;
   const text = msg.text;
+  switch (text) {
+    case '/start':
+      return bot.sendMessage(chatId, '对话开始');
+    default:
+      if (text.startsWith('/qq')) {
+        const regex = /\/qq\s+(\d+)/;
+        const match = regex.exec(text);
+        if (match == null) { // 检查传入的参数是否符合要求
+          return bot.sendMessage(chatId, '请输入正确的 QQ 号');
+        }
+        const qq = match[1];
+        if (qq.length < 4) { // 检查 QQ 号是否小于 5 位
+          return bot.sendMessage(chatId, '请输入正确的 QQ 号');
+        }
+        const data = await getqq(qq);
+        return bot.sendMessage(chatId, data);
+      }
+  }
   echolog(userId, chatId, text);
+  if(updateUserChatHistory(userId, text)){
+    return bot.sendMessage(chatId,'对话已经结束');
+  }
   try {
     const thinkingMessage = await bot.sendMessage(chatId, "思考中");
     const thinkingMessageId = thinkingMessage.message_id;
-    const output = await openaiApiRequest(text);
-    console.log(output);
+    const chatHistory = userChatHistory[userId].join("\n");
+    const inputWithHistory = chatHistory + "\n" + text;
+    const output = await openaiApiRequest(input=inputWithHistory);
     await bot.editMessageText(text + output, {
       chat_id: chatId,
       message_id: thinkingMessageId,
     });
+
+    updateUserChatHistory(userId, output, false);
   } catch (error) {
     console.error(error);
   }
 });
-// 创建 HTTPS 服务器
+
 https
   .createServer(options, (req, res) => {
     const ip = req.connection.remoteAddress;
     console.log(`Received request from ${ip}`);
     res.end("Hello, world!");
   })
-  .listen(443, "0.0.0.0");
+
+
+//学习参考请勿用于非法用途

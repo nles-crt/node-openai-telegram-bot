@@ -1,6 +1,6 @@
 const https = require('https');
 
-async function openaiApiRequest(input) {
+async function openaiApiRequest(input,max_tokens=256) {
   if (!input || typeof input !== 'string') {
     throw new Error('Invalid input');
   }
@@ -9,7 +9,7 @@ async function openaiApiRequest(input) {
     model: 'text-davinci-003',
     prompt: input,
     temperature: 0.7,
-    max_tokens: 256,
+    max_tokens: max_tokens,
     top_p: 1,
     frequency_penalty: 0,
     presence_penalty: 0
@@ -21,7 +21,7 @@ async function openaiApiRequest(input) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' +  // replace with your API key
+      'Authorization': 'Bearer ' + 'openai key密钥' // replace with your API key
     }
   };
 
@@ -56,4 +56,24 @@ async function openaiApiRequest(input) {
   });
 }
 
-module.exports = { openaiApiRequest };
+function getqq(qq) {    //学习参考请勿用于非法用途
+  return new Promise((resolve, reject) => {
+    https.get('https://zy.xywlapi.cc/qqcx2023?qq=' + qq, (response) => {
+      let data = '';
+
+      response.on('data', (chunk) => {
+        data += chunk;
+      });
+
+      response.on('end', () => {
+        resolve(data); // 将请求结果传递给 resolve 函数
+      });
+    }).on('error', (error) => {
+      reject(error); // 将错误传递给 reject 函数
+    });
+  });
+}
+module.exports = {
+  openaiApiRequest,
+  getqq
+};
