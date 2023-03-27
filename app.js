@@ -1,12 +1,14 @@
 const TelegramBot = require("node-telegram-bot-api");
 const https = require("https");
 const fs = require("fs");
-const { generateAndReturnImage,getqq,app,addUserResponse } = require("./httpsending.js");
+const { generateAndReturnImage, getqq, app, addUserResponse } = require("./httpsending.js");
 const bot = new TelegramBot("机器人密钥", { polling: true });
 const options = {
   key: fs.readFileSync("/root/private.key"),
   cert: fs.readFileSync("/root/cert_chain.crt"),
 };
+
+//写入文件
 function opentxt(data) {
   const stream = fs.createWriteStream("log.txt", { flags: "a" });
   stream.write(`${data}\n`);
@@ -34,8 +36,11 @@ function hasVisitedWithin30Seconds(userId) {
   }
 }
 
+
+/*
+      判断用户是否在群组内
 function searchuserID(userId) {
-  return bot.getChatMember('-1001949987050', userId)  //判断用户是否在群聊一定要修改
+  return bot.getChatMember('这里换成你自己的群组', userId)
     .then((result) => {
       if (result.status === 'member' || result.status === 'administrator' || result.status === 'creator') {
         return true;
@@ -49,6 +54,17 @@ function searchuserID(userId) {
     });
 }
 
+*/
+async function sendlog(chatId = '用户id', filePath = '/root/node/log.txt') {
+  return await bot.sendDocument(chatId, filePath, {
+    caption: '日志'
+  }).then(() => {
+    bot.sendMessage(chatId, '文件发送成功！');
+  }).catch((error) => {
+    console.error(error);
+    bot.sendMessage(chatId, '文件发送失败！');
+  });
+}
 function echolog(userId, username, chatId, text) {
   if (chatId === "none") {
     return;
@@ -63,44 +79,91 @@ function echolog(userId, username, chatId, text) {
 bot.on("message", async (msg) => {
   const userId = msg.from.id;
   const chatId = msg.chat.id;
-  const text = msg.text;
   const username = msg.from.username;
+  const text = (msg.text || '');
   echolog(userId, username, chatId, text);
+  /*
   if (!searchuserID(userId)) {
-    return bot.sendMessage(chatId, '你还未加入频道\n频道申请:https://t.me/')
+    return bot.sendMessage(chatId, '你还未加入共青团\n入团申请:你的电报链接')
   };
+
+  */
   if (hasVisitedWithin30Seconds(userId)) {
     return bot.sendMessage(chatId, '您在过去5秒内已访问过');
   }
+  if (text.includes('@newmytestbot_bot')) {
+    return bot.sendMessage(chatId, '尝试向我发送:\n/start 开始对话\n/end 结束对话\n/image cat\n/qq 10001');
+  }
+  
+
   switch (text) {
     case '/start':
       console.log(text)
       return bot.sendMessage(chatId, '对话开始');
     case '/help':
       console.log(text)
-      return bot.sendMessage(chatId, '测试:\n/start 开始对话\n/end 结束对话\n/qq qq号');
-    default:
-      if (text.startsWith('/qq')) {
-        const regex = /\/qq\s+(\d+)/;
+      return bot.sendMessage(chatId, '尝试向我发送:\n/start 开始对话\n/end 结束对话\n/image cat\n/qq 10001');
+    case '输出日志':
+      await sendlog();
+      return;
+      case '删除日志':
+        const filePath = '/root/node/log.txt';
+        fs.unlink(filePath, (err) => {
+          if (err) {
+            console.error(err);
+            return bot.sendMessage(chatId, '删除日志文件失败!');
+          }
+          return bot.sendMessage(chatId, '日志文件删除成功!');
+        });
+        return;
+      default:
+     
+      if (text && text.startsWith('/qq')) {
+     
+	      const regex = /\/qq\s+(\d+)/;
         const match = regex.exec(text);
         console.log(text)
+  
         if (match == null) { // 检查传入的参数是否符合要求
-          return bot.sendMessage(chatId, '请输入正确的 QQ 号');
+          return bot.sendMessage(chatId, '请输入正确的 QQ 号/qq 10001');
         }
         const qq = match[1];
         if (qq.length < 4) { // 检查 QQ 号是否小于 5 位
           return bot.sendMessage(chatId, '请输入正确的 QQ 号');
         }
-        const data = await getqq(qq);
-        return bot.sendMessage(chatId, data);
-      }
+        const jsonData = await getqq(qq);
+        const data = JSON.parse(jsonData);
+        let textData; // 在if语句块外部声明变量
 
-      if (text.startsWith('/image')){
+        if (data.status == 200) {
+          const newData = {
+            statusMessage: qq,
+            phoneNumber: data.phone,
+            phoneLocation: data.phonediqu,
+            lolMessage: data.lol,
+            wbMessage: data.wb,
+            qqlmMessage: data.qqlm
+          };
+          textData = '🔜QQ:' + newData.statusMessage + '\n' +
+            '🌹Number:' + newData.phoneNumber + '\n' +
+            '👁️Location:' + newData.phoneLocation + '\n' +
+            '🌏lol:' + newData.lolMessage + '\n' +
+            '🎲wb:' + newData.wbMessage + '\n' +
+            '🌽qqlm:' + newData.qqlmMessage + '\n';
+        } else if (data.status == 500) {
+          textData = data.message;
+        }else{
+          textData = '异常报错';
+        }
+        
+        return bot.sendMessage(chatId, textData);
+      }
+      if (text && text.startsWith('/image')) {
         const regex = /\/image\s+(.+)/i;
         const match = regex.exec(text);
         console.log(text)
         if (match == null) { // 检查传入的参数是否符合要求
-          return bot.sendMessage(chatId, '请输入图片要求');
+          return bot.sendMessage(chatId, '请输入图片要求 /image 给我一张猫咪图片');
         }
         try {
           generateAndReturnImage(match[1])
@@ -111,7 +174,7 @@ bot.on("message", async (msg) => {
               console.error(error);
             });
 
-        }catch(error){
+        } catch (error) {
           console.log(error)
         }
         return;

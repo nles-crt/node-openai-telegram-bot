@@ -1,8 +1,10 @@
 const https = require('https');
 const { Configuration, OpenAIApi } = require('openai');
+const OpenAIKEY = ''; 设置openaikey 
 const configuration = new Configuration({
-  apiKey: 'openai key';  //设置openai key
+  apiKey: OpenAIKEY,
 });
+const OPENAI_API_KEY = OpenAIKEY;
 
 const openai = new OpenAIApi(configuration);
 
@@ -98,7 +100,6 @@ function getqq(qq) {
     });
   }
 
-  const OPENAI_API_KEY = 'openai key';             //设置openai key
   const url = 'https://api.openai.com/v1/images/generations';
   
   function generateImage(prompt, n=1, size='512x512') {
